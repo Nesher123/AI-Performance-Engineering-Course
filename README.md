@@ -5,17 +5,20 @@ Product description generation and evaluation using LLMs.
 ## Setup
 
 1. **Install dependencies with uv:**
+
    ```bash
    uv sync
    ```
 
 2. **Configure API credentials:**
+
    ```bash
    cp .env.example .env
    # Edit .env and add your Nebius Token Factory API key
    ```
 
 3. **Launch Jupyter:**
+
    ```bash
    jupyter notebook assignment_01_solution.ipynb
    ```
@@ -47,7 +50,7 @@ assignment_01-evaluation/
 - `pandas` - Data manipulation and Excel I/O
 - `openpyxl` - Excel file format support
 - `pydantic` - Structured output schemas
-- `httpx` - HTTP client for API calls
+- `openai` - OpenAI REST API
 - `python-dotenv` - Environment variable management
 - `jupyter` - Notebook environment
 
