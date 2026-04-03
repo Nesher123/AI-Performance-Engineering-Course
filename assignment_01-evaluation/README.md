@@ -29,7 +29,10 @@ Product description generation and evaluation using LLMs.
 assignment_01-evaluation/
 ├── Assignment_01_product_dataset.csv   # Input data (51 products)
 ├── assignment_01_solution.ipynb        # Main notebook (all 6 tasks)
-├── assignment_01.xlsx                  # Generated results (Task 2+)
+├── assignment_01.csv                   # Generated results (Task 2+)
+├── assignment_01_task4_exp1.csv        # Generated results (Task 4)
+├── assignment_01_task4_exp2.csv        # Generated results (Task 4)
+├── assignment_01_task4_exp3.csv        # Generated results (Task 4)
 ├── pyproject.toml                      # Dependencies
 ├── .python-version                     # Python 3.11
 ├── .env.example                        # API credentials template
