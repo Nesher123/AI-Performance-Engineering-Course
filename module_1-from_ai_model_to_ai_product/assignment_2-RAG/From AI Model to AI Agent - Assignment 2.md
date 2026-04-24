@@ -16,12 +16,12 @@ By the end of this assignment you'll have built a working RAG pipeline, evaluate
 
 ## Dataset
 
-We'll use the financebench dataset. Read the description and read carefully through the columns and make sure you understand them (you can ignore `dataset_subset_label`). The paper can also help you with that.
+We'll use the [financebench dataset](https://huggingface.co/datasets/PatronusAI/financebench). Read the description and read carefully through the columns and make sure you understand them (you can ignore `dataset_subset_label`). The [paper](https://huggingface.co/papers/2311.11944) can also help you with that.
 
 **Notes:**
 
 1. The dataset has 3 types of questions: *metrics-generated*, *domain-relevant*, *novel-generated*. **Drop** the *metrics-generated* questions.
-2. Some of the urls in the *doc_link* column are dead. Replace them with links to this repo. Note that the folder contains more documents than are referenced by the dataset.
+2. Some of the urls in the *doc_link* column are dead. Replace them with links to [this repo](https://github.com/patronus-ai/financebench/tree/main/pdfs). Note that the folder contains more documents than are referenced by the dataset.
 
 ## Task 1 - naive generation
 
