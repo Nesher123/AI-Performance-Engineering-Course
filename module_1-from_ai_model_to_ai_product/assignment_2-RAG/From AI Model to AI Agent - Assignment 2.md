@@ -133,17 +133,17 @@ Name the file **assignment2_run_and_compare**.
 
 ## Task 6 - evaluation
 
-The most straightforward way to evaluate a RAG pipeline is by checking the final answer's correctness - compare it with the “ground truth”, as we did in the previous assignment. But we can also evaluate specific components, which enables better fine-tuning of the pipeline. Here you can find a partial list.
+The most straightforward way to evaluate a RAG pipeline is by checking the final answer's correctness - compare it with the “ground truth”, as we did in the previous assignment. But we can also evaluate specific components, which enables better fine-tuning of the pipeline. [Here](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/#retrieval-augmented-generation) you can find a partial list.
 
 In this task we'll evaluate with 3 measures:
 
-1. **Correctness** - direct comparison of the final answer and the ground truth, using an LLM as a judge. For the generation we used Llama-3.3-70B-Instruct. For the judge we'll use **a different model** - DeepSeek-V3-0324. Write a short judge prompt that returns a binary verdict (correct / incorrect) plus a one-sentence justification.
+1. **Correctness** - direct comparison of the final answer and the ground truth, using an LLM as a judge. For the generation we used Llama-3.3-70B-Instruct. For the judge we'll use **a different model** - DeepSeek-V3.2. Write a short judge prompt that returns a binary verdict (correct / incorrect) plus a one-sentence justification.
 
-2. **Faithfulness** - check if the generation model actually relies on the retrieved information. Use Ragas Faithfulness from the collections API. Use `.score()` (the synchronous method), not `.ascore()`.
+2. **Faithfulness** - check if the generation model actually relies on the retrieved information. Use [Ragas](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/faithfulness/) Faithfulness from the collections API. Use `.score()` (the synchronous method), not `.ascore()`.
 
 **Notes:**
 
-* a. For the Ragas LLM use the same model as the Correctness judge (DeepSeek-V3-0324). Wrap it using `ragas.llms.llm_factory` with an *AsyncOpenAI* client configured for Nebius Token Factory.
+* a. For the Ragas LLM use the same model as the Correctness judge (DeepSeek-V3.2). Wrap it using `ragas.llms.llm_factory` with an *AsyncOpenAI* client configured for Nebius Token Factory.
 
 * b. Ragas faithfulness makes multiple LLM calls per example → pretty slow. Therefore, evaluate with this measure only for the first 20 examples in your dataset, sorted by *financebench_id*.
 

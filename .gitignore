@@ -208,3 +208,7 @@ __marimo__/
 
 .*/
 .DS_Store
+
+rag_demo.ipynb
+rag_eval.ipynb
+module_1-from_ai_model_to_ai_product/assignment_2-RAG/financebench_rag_faiss/*
