@@ -211,4 +211,10 @@ __marimo__/
 
 rag_demo.ipynb
 rag_eval.ipynb
-module_1-from_ai_model_to_ai_product/assignment_2-RAG/financebench_rag_faiss/*
+
+# Cached pipeline outputs (regenerable from notebook)
+*.pkl
+
+# FAISS vector store indices (regenerable from notebook)
+financebench_rag_faiss/
+financebench_rag_faiss_chunk500/
