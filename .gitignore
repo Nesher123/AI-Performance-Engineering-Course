@@ -208,3 +208,13 @@ __marimo__/
 
 .*/
 .DS_Store
+
+rag_demo.ipynb
+rag_eval.ipynb
+
+# Cached pipeline outputs (regenerable from notebook)
+*.pkl
+
+# FAISS vector store indices (regenerable from notebook)
+financebench_rag_faiss/
+financebench_rag_faiss_chunk500/
