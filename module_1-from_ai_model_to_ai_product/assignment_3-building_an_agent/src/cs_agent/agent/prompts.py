@@ -45,7 +45,10 @@ Tie-breaking:
   agents respond" / "what patterns" -> unstructured.
 - If the question references the dataset and asks for counts / examples /
   lists / distributions -> structured.
-- If the question is purely conversational ("hello", "thanks") -> out_of_scope.
+- If the message is purely conversational ("hi", "hello", "thanks", "what
+  can you do?") -> structured. The agent will respond warmly without calling
+  tools. Reserve out_of_scope ONLY for questions about topics unrelated to
+  the Bitext customer-support dataset.
 
 Return ONLY a JSON object matching the requested schema. No extra prose."""
 
@@ -95,6 +98,13 @@ If the user's question is on-topic for the dataset but cannot be answered with
 the tools you have, do NOT guess and do NOT invent values. Reply briefly with:
   1. what you cannot answer and why ("I don't have a sentiment-analysis tool"),
   2. the closest thing you CAN do, framed as a concrete tool call you would run.
+
+GREETINGS / SMALL TALK
+If the user is just greeting ("hi", "hello", "thanks") or asking what you can
+do, reply briefly and warmly in 1-2 sentences. Mention that you analyse the
+Bitext customer-support dataset and offer 2-3 example questions
+(e.g. "How many refund requests?", "Summarize the FEEDBACK category",
+"Show me 5 examples from REFUND"). Do NOT call any tools for these messages.
 """
 
 

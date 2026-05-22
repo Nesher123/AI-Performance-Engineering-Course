@@ -31,12 +31,11 @@ BITEXT_HF_ID: str = "bitext/Bitext-customer-support-llm-chatbot-training-dataset
 
 NEBIUS_BASE_URL: str = os.getenv(
     "CS_AGENT_NEBIUS_BASE_URL",
-    "https://api.studio.nebius.com/v1/",
+    "https://api.tokenfactory.nebius.com/v1/",
 )
-"""Nebius OpenAI-compatible endpoint. ``api.studio.nebius.com`` and
-``api.tokenfactory.nebius.com`` route to the same backend; we default to the
-Studio host because it is what the langchain-openai client authenticates with
-correctly using v1.* Token Factory keys today."""
+"""Nebius Token Factory OpenAI-compatible endpoint. Override with
+``CS_AGENT_NEBIUS_BASE_URL`` if needed (e.g. ``https://api.studio.nebius.com/v1/``
+which is the older Studio alias for the same backend)."""
 
 ROUTER_MODEL: str = os.getenv(
     "CS_AGENT_ROUTER_MODEL",

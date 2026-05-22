@@ -32,10 +32,17 @@ from cs_agent.agent.graph import build_graph
 class Case:
     label: str
     query: str
-    expected_route: str
+    expected_route: str | tuple[str, ...]
     must_call_any_of: tuple[str, ...] = ()
     answer_must_contain: tuple[str, ...] = ()
     notes: str = ""
+
+    @property
+    def expected_routes(self) -> tuple[str, ...]:
+        """Always-tuple form of expected_route, used for matching."""
+        if isinstance(self.expected_route, str):
+            return (self.expected_route,)
+        return self.expected_route
 
 
 CASES: list[Case] = [
@@ -96,6 +103,30 @@ CASES: list[Case] = [
         expected_route="out_of_scope",
         answer_must_contain=("outside the scope",),
     ),
+    Case(
+        label="greeting",
+        query="hi",
+        # A bare greeting must NOT be declined. Either route through the agent
+        # (structured/unstructured) is acceptable; the agent's GREETINGS rule
+        # in the system prompt produces a warm response without calling tools.
+        expected_route=("structured", "unstructured"),
+        answer_must_contain=("Bitext",),
+        notes="Greetings should land in agent path, not the OOS decline.",
+    ),
+    Case(
+        label="compound",
+        query=("How many refund requests did we get? And summarize how agents respond to complaints."),
+        # Compound queries can land in either route — both are acceptable.
+        expected_route=("structured", "unstructured"),
+        # Known Llama 3.3 70B quirk: for compound questions the model often
+        # describes the tool calls as JSON inside the message content instead of
+        # emitting them via the function-calling protocol. We assert routing
+        # only; the detail block reveals the actual tool-call behaviour.
+        notes=(
+            "Edge case: Llama 3.3 70B sometimes textualises multiple tool calls "
+            "instead of emitting them. Workaround: split into two turns."
+        ),
+    ),
 ]
 
 
@@ -111,7 +142,7 @@ class Result:
 
     @property
     def route_ok(self) -> bool:
-        return self.route == self.case.expected_route
+        return self.route in self.case.expected_routes
 
     @property
     def tools_ok(self) -> bool:
@@ -167,7 +198,7 @@ def print_summary(results: list[Result]) -> None:
     print("=" * 100)
     for i, r in enumerate(results, 1):
         mark = "✓" if r.passed else "✗"
-        route_disp = r.route or "?" if r.route_ok else f"{r.route}≠{r.case.expected_route}"
+        route_disp = (r.route or "?") if r.route_ok else f"{r.route}≠{'/'.join(r.case.expected_routes)}"
         tool_names = ", ".join(name for name, _ in r.tool_calls) or "-"
         print(
             f"{i:>2}  {mark:<5} {r.case.label:<22} {route_disp:<13} "
@@ -187,10 +218,11 @@ def print_details(results: list[Result]) -> None:
         print(f"\n[{i}] {r.case.label}: {r.case.query!r}")
         if r.case.notes:
             print(f"    notes:        {r.case.notes}")
-        print(
-            f"    route:        {r.route!r} (expected {r.case.expected_route!r}) "
-            f"{'OK' if r.route_ok else 'FAIL'}"
-        )
+        if isinstance(r.case.expected_route, str):
+            expected_disp = repr(r.case.expected_route)
+        else:
+            expected_disp = f"one of {list(r.case.expected_routes)}"
+        print(f"    route:        {r.route!r} (expected {expected_disp}) {'OK' if r.route_ok else 'FAIL'}")
         print(f"    iterations:   {r.iterations}")
         print(f"    tool calls ({len(r.tool_calls)}):")
         for name, args in r.tool_calls:

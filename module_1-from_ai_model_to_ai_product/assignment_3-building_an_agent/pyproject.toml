@@ -59,10 +59,10 @@ ignore = [
 known-first-party = ["cs_agent"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "scripts"]
 testpaths = ["tests"]
 markers = [
-    "integration: tests that exercise the live Bitext DataFrame (requires the HF/parquet cache)",
+    "integration: tests that exercise the live Bitext DataFrame and/or live Nebius LLM calls (slower; require network for LLM)",
 ]
 
 [tool.pyright]

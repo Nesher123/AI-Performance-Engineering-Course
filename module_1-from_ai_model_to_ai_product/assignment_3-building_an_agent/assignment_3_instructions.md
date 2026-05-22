@@ -49,7 +49,7 @@ Detailed requirements appear in the next page.
 
 ### Requirements
 
-1. **Max iterations**: Set a maximum iteration limit on your agent loop (A value between 10–15 is a reasonable starting point). If the agent hasn't produced a final answer after that number of iterations, it should return a graceful fallback message rather than spinning forever.
+1. **Max iterations**: Set a maximum iteration limit on your agent loop (A value between 10-15 is a reasonable starting point). If the agent hasn't produced a final answer after that number of iterations, it should return a graceful fallback message rather than spinning forever.
 
 2. **Query router**: Implement a dedicated router node that classifies the incoming query as structured, unstructured, or out-of-scope before the agent begins tool selection. Out-of-scope queries should be declined politely - the agent should not answer them from the LLM's general knowledge.
 

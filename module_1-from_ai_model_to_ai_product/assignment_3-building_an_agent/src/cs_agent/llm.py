@@ -37,7 +37,7 @@ def get_router_llm() -> ChatOpenAI:
         api_key=require_api_key(),
         base_url=NEBIUS_BASE_URL,
         temperature=ROUTER_TEMPERATURE,
-        # Router is a small, fast classifier — typical latency 0.5–3s.
+        # Router is a small, fast classifier — typical latency 0.5-3s.
         # Fail fast at 20s and retry once. Worst case wall time: ~40s.
         timeout=20,
         max_retries=1,
@@ -56,7 +56,7 @@ def get_agent_llm() -> ChatOpenAI:
         api_key=require_api_key(),
         base_url=NEBIUS_BASE_URL,
         temperature=AGENT_TEMPERATURE,
-        # Agent generations (incl. summarize tool) are typically 1–15s.
+        # Agent generations (incl. summarize tool) are typically 1-15s.
         # 30s catches the long tail; retry once for transient HTTP blips.
         # Worst case per LLM call: ~60s.
         timeout=30,

@@ -1,10 +1,16 @@
 """Query router: classifies the user's latest message into one of three routes.
 
 Implementation detail: we use ``ChatOpenAI.with_structured_output`` against a
-small Llama 3.1 8B model. Structured output gives us a typed ``RouterDecision``
-back instead of free-form JSON we'd have to parse defensively. If the model
-ever fails to comply with the schema we fall back to ``out_of_scope`` so the
-agent is never silently routed somewhere it shouldn't be.
+small classifier model (Qwen3-32B by default). Structured output gives us a
+typed ``RouterDecision`` back instead of free-form JSON to parse defensively.
+
+Resilience: if the primary router model fails (timeout, 404, schema violation),
+we transparently retry with the larger agent model (Llama 3.3 70B). If even
+that fails the final last-resort fallback is route='structured' — sending the
+question into the agent loop where the system prompt's scoped-fallback
+paragraph keeps the response honest. Defaulting to 'structured' rather than
+'out_of_scope' avoids unfairly declining legitimate questions during transient
+Nebius outages.
 """
 
 from __future__ import annotations
@@ -12,12 +18,13 @@ from __future__ import annotations
 import logging
 from typing import Literal
 
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from cs_agent.agent.prompts import ROUTER_SYSTEM
 from cs_agent.agent.state import GraphState, Route
-from cs_agent.llm import get_router_llm
+from cs_agent.llm import get_agent_llm, get_router_llm
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +45,24 @@ class RouterDecision(BaseModel):
     )
 
 
-def classify(message: str) -> RouterDecision:
-    """Classify a single user message. Exposed for tests and the smoke script."""
-    structured = get_router_llm().with_structured_output(RouterDecision)
+def _classify_with(llm: BaseChatModel, message: str) -> RouterDecision:
+    structured = llm.with_structured_output(RouterDecision)
     raw = structured.invoke([SystemMessage(ROUTER_SYSTEM), HumanMessage(message)])
     return RouterDecision.model_validate(raw)
+
+
+def classify(message: str) -> RouterDecision:
+    """Classify a single user message. Exposed for tests and the smoke script.
+
+    Tries the primary router model first. On any failure (network, timeout,
+    schema), retries once with the larger agent model. If both fail, raises
+    the second exception so callers can decide a last-resort fallback.
+    """
+    try:
+        return _classify_with(get_router_llm(), message)
+    except Exception as primary_exc:  # noqa: BLE001 — see below
+        logger.warning("router primary failed (%s); retrying with agent model", primary_exc)
+        return _classify_with(get_agent_llm(), message)
 
 
 def router_node(state: GraphState) -> dict:
@@ -57,16 +77,19 @@ def router_node(state: GraphState) -> dict:
         None,
     )
     if last_human is None:
-        logger.warning("router_node called with no HumanMessage in state; declining.")
-        return {"route": "out_of_scope"}
+        logger.warning("router_node called with no HumanMessage in state; defaulting structured.")
+        return {"route": "structured"}
 
     try:
         decision = classify(str(last_human.content))
         logger.debug("router decision: %s — %s", decision.route, decision.reason)
         return {"route": decision.route}
     except Exception as exc:  # noqa: BLE001 — fall back safely on any LLM/parsing error
-        logger.warning("router LLM failed (%s); defaulting to out_of_scope", exc)
-        return {"route": "out_of_scope"}
+        # Both primary and fallback models failed. Default to 'structured' so
+        # legitimate questions aren't declined during a transient Nebius outage.
+        # The agent's system prompt still keeps it from inventing answers.
+        logger.warning("router fully failed (%s); defaulting to 'structured'", exc)
+        return {"route": "structured"}
 
 
 def route_from_router(state: GraphState) -> Literal["agent", "decline"]:
