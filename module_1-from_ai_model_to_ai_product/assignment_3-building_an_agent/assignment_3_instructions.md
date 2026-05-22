@@ -16,7 +16,7 @@ You'll implement the agent as a LangGraph ReAct graph with persistent memory, an
 
 ## The Dataset
 
-**Bitext - Customer Service Tagged Training Dataset** (link)
+**Bitext - Customer Service Tagged Training Dataset** ([bitext/Bitext-customer-support-llm-chatbot-training-dataset](https://huggingface.co/datasets/bitext/Bitext-customer-support-llm-chatbot-training-dataset))
 
 Bitext is a synthetic dataset of customer support queries paired with agent responses. Its original purpose is models fine-tuning, but here we use it as a data source for our agent to analyze.
 
@@ -57,7 +57,7 @@ Detailed requirements appear in the next page.
 
 **Remember**: Your tool descriptions are as important as the tool logic. If a human can't tell when to use a tool from its description alone, neither can the LLM.
 
-“A few well-designed tools beat many poorly described ones” (T. Braude).
+"A few well-designed tools beat many poorly described ones" (T. Braude).
 
 1. **Multi-step reasoning**: The agent must handle queries that require chaining multiple tools. For example:
 
@@ -71,9 +71,9 @@ Detailed requirements appear in the next page.
 * "How many refund requests did we get?"
 * "Show me 5 examples of the SHIPPING category."
 * "Summarize how agents respond to complaint intents."
-* “Show me examples of people wanting their money back.”
-* “What is the distribution of intents in the ACCOUNT category?”
-* “What's the best CRM software for handling complaints?” (out-of-scope)
+* "Show me examples of people wanting their money back."
+* "What is the distribution of intents in the ACCOUNT category?"
+* "What's the best CRM software for handling complaints?" (out-of-scope)
 * "Who is the president of France?" (out-of-scope)
 
 **Think about what purpose each of the above tests serve.**
@@ -90,7 +90,7 @@ Enable the agent to remember conversation history across turns and across restar
     * "Show me 3 examples from the REFUND category" → [agent shows examples] → "Show me 3 more"
     * "How many complaints did we get?" → "What about refunds?" → "What is the total count of the last two?"
 
-<u>This</u> notebook demonstrates the checkpointer concept using in-memory storage. You can use it as reference, but note that `MemorySaver` is in-memory only and won't survive a restart. Look into `SqliteSaver` or `PostgresSaver` for persistence.
+[This](https://colab.research.google.com/drive/1ucLPjB9J7lrYzTAkXoT7MB8J2VPQScnb) notebook demonstrates the checkpointer concept using in-memory storage. You can use it as reference, but note that `MemorySaver` is in-memory only and won't survive a restart. Look into `SqliteSaver` or `PostgresSaver` for persistence.
 
 ### 2b. User Profile (10 pts)
 
@@ -100,11 +100,11 @@ Enable the agent to build and maintain a persistent profile for each user, store
 2. It should be able to answer questions like "What do you remember about me?" by referencing this profile, and should naturally update it as new information emerges in conversation.
 3. It must persist across restarts, whether through the checkpointer, a per-user file, or another approach.
 
-You can implement this using a summary node in the graph, a per-user context file (context.md) or other approaches. <u>Here</u> you can find more ideas.
+You can implement this using a summary node in the graph, a per-user context file (context.md) or other approaches. [Here](https://github.com/NirDiamant/Agent_Memory_Techniques/tree/main/all_techniques) you can find more ideas.
 
 ## Task 3 - MCP Server (20 pts)
 
-Build an MCP server using FastMCP. Expose at least 3 of your tools as MCP tools. In your README part that shows how to start the server, include a short section showing how to connect a client to call one of its tools.
+Build an MCP server using [FastMCP](https://github.com/PrefectHQ/fastmcp). Expose at least 3 of your tools as MCP tools. In your README part that shows how to start the server, include a short section showing how to connect a client to call one of its tools.
 
 ## Bonus A - Streamlit UI (+10 pts)
 
