@@ -2,33 +2,39 @@
 
 A LangGraph ReAct agent that answers user questions about the
 [Bitext customer-support dataset](https://huggingface.co/datasets/bitext/Bitext-customer-support-llm-chatbot-training-dataset).
-Built incrementally — Task 1 of the assignment is complete; Task 2 (memory),
-Task 3 (MCP), and the bonuses (Streamlit UI, Query Recommender) follow next.
+Built incrementally — Tasks 1 and 2 are complete; Task 3 (MCP) and the
+bonuses (Streamlit UI, Query Recommender) follow next.
 
 ```mermaid
 flowchart TD
     user["User CLI"] --> cli["cli.py"]
-    cli --> graph["LangGraph StateGraph"]
+    cli --> graph["LangGraph StateGraph\n(checkpointer = SqliteSaver)"]
 
     subgraph graph [Compiled graph]
         router["router_node\n(Qwen3-32B,\nstructured output)"]
         decline["decline_node"]
-        agent["agent_node\n(Llama 3.3 70B,\nReAct loop)"]
+        agent["agent_node\n(Llama 3.3 70B,\nReAct loop;\ninjects user profile)"]
         tools["tool_node\n(7 Pydantic-typed tools)"]
         fallback["fallback_node\n(loop / max-iter)"]
+        profile["profile_update_node\n(Qwen3-32B;\ngated by regex)"]
     end
 
     router -->|"out_of_scope"| decline --> endNode([END])
     router -->|"structured / unstructured"| agent
     agent <--> tools
-    agent --> endNode
-    agent --> fallback --> endNode
+    agent --> profile --> endNode
+    agent --> fallback --> profile
 
-    subgraph storage [Local data]
-        parquet["data/bitext.parquet\n(HF download cache)"]
+    subgraph storage [Persistent stores]
+        parquet["data/bitext.parquet\n(HF cache)"]
+        ckpt["checkpoints.sqlite\n(per thread_id)"]
+        prof["profiles/&lt;user_id&gt;.json\n(per user_id)"]
     end
 
     tools --- parquet
+    graph --- ckpt
+    profile --- prof
+    agent --- prof
 ```
 
 ---
@@ -57,9 +63,9 @@ instant — the parquet is reused.
 
 | Task | Status | Where |
 |---|---|---|
-| 1 — Initial agent (50 pts) | done | this README, `src/cs_agent/`, `scripts/verify_task1.py` |
-| 2a — Episodic memory (20 pts) | up next | `--session` flag is wired but not yet persistent |
-| 2b — User profile (10 pts) | up next | `--user` flag is wired but profile not yet built |
+| 1 — Initial agent (50 pts) | done | `src/cs_agent/`, `scripts/verify_task1.py` |
+| 2a — Episodic memory (20 pts) | done | `src/cs_agent/memory/checkpoint.py`, `--session` flag, `scripts/verify_task2.py` |
+| 2b — User profile (10 pts) | done | `src/cs_agent/memory/profile.py`, `profile_update_node`, `--user` flag |
 | 3 — MCP server (20 pts) | up next | `src/cs_agent/mcp_server/` (skeleton) |
 | Bonus A — Streamlit UI (+10) | up next | `src/cs_agent/ui/` |
 | Bonus B — Query recommender (+10) | up next | `state.pending_query` reserved |
@@ -76,6 +82,17 @@ uv run cs-agent --session demo --user ofir -v       # also show INFO logs
 uv run cs-agent --help                              # all flags
 ```
 
+`--session` is the LangGraph `thread_id` for the persistent
+`SqliteSaver` checkpointer (Task 2a). The first run prints
+`starting new session 'demo'`; subsequent runs against the same session
+print `resumed session 'demo' (N prior turns)` and "show me 3 more"-style
+follow-ups work across restarts.
+
+`--user` is the per-user profile id (Task 2b). On any turn that contains
+high-signal personal markers ("my name is …", "I prefer …", "remember
+that …"), the agent updates `profiles/<user_id>.json` and uses that file
+on every subsequent turn (any session) to personalise its responses.
+
 The CLI prints every reasoning step in colour so the grader can see *how* the
 agent arrived at its answer:
 
@@ -90,25 +107,185 @@ agent arrived at its answer:
 
 Type `exit`, `quit`, or `:q` (or Ctrl-C / Ctrl-D) to leave.
 
-### Programmatic verifier (10 brief queries)
-
-`scripts/verify_task1.py` runs the 8 example queries from the assignment plus 2
-extra cases (greeting, compound) and prints a pass/fail table:
+### Programmatic verifiers
 
 ```bash
-uv run python scripts/verify_task1.py
+uv run python scripts/verify_task1.py    # 10 single-turn cases (Task 1)
+uv run python scripts/verify_task2.py    # 2 multi-turn cases (Task 2): episodic
+                                         # follow-up + cross-session profile recall
 ```
 
-Expected output ends with `Result: 10/10 passed, 0 failed` (modulo the compound
-edge case noted under [Known limitations](#known-limitations) — the verifier
-already accounts for it).
+`verify_task1.py` runs the 8 example queries from the assignment plus
+2 extra cases (greeting, compound) and ends with
+`Result: 10/10 passed, 0 failed`.
+
+`verify_task2.py` runs both Task-2 acceptance scenarios end-to-end against
+a tmp-dir checkpoint + profile (so it never pollutes your real working
+state) and ends with `Result: 2/2 passed, 0 failed`.
 
 ### Test suite
 
 ```bash
-uv run python -m pytest -m "not integration"   # 39 fast unit tests, ~1.5s
-uv run python -m pytest -m integration         # 23 live tests, ~110s (Nebius)
-uv run python -m pytest                        # all 62 tests
+uv run python -m pytest -m "not integration"   # 77 fast unit tests, ~2s
+uv run python -m pytest -m integration         # 29 live tests, ~100s (Nebius)
+uv run python -m pytest                        # all 106 tests, ~100s
+```
+
+---
+
+## Walkthrough examples
+
+Hands-on flows a grader can run to exercise every Task 1 + Task 2
+behaviour. Run from the project root.
+
+### Reset state (optional, for a clean demo)
+
+```bash
+rm -f checkpoints.sqlite checkpoints.sqlite-journal
+rm -rf profiles/
+```
+
+### Flow 1 — Episodic memory across a process restart (Task 2a)
+
+```bash
+uv run cs-agent --session demo --user grader
+```
+
+Banner reads `starting new session 'demo'`. At the prompt:
+
+```
+you> Show me 3 examples of REFUND
+you> exit
+```
+
+Now relaunch the same session:
+
+```bash
+uv run cs-agent --session demo --user grader
+```
+
+Banner now reads `resumed session 'demo' (1 prior turns)`. Type:
+
+```
+you> Show me 3 more
+```
+
+The agent treats this as a real follow-up — no clarification asked, fresh
+examples returned. Conversation history survived the restart.
+
+```bash
+sqlite3 checkpoints.sqlite "SELECT thread_id, COUNT(*) FROM checkpoints GROUP BY thread_id;"
+```
+
+### Flow 2 — Profile, introduce + same-session recall (Task 2b)
+
+```bash
+uv run cs-agent --session intro --user ofir
+```
+
+```
+you> Hi, my name is Ofir and I work as a data engineer
+you> I prefer concise answers
+you> What do you remember about me?
+you> exit
+```
+
+Watch the trace: turns 1 and 2 trip the regex gate → the `profile` node
+calls the LLM and writes JSON. Turn 3 the agent answers from the injected
+profile block in its system prompt — **no tool calls**.
+
+```bash
+cat profiles/ofir.json
+```
+
+### Flow 3 — Cross-session profile recall
+
+Same `--user ofir`, **different** `--session`:
+
+```bash
+uv run cs-agent --session work --user ofir
+```
+
+Banner: `starting new session 'work'` (fresh thread, no prior history).
+
+```
+you> What do you remember about me?
+```
+
+The agent answers with your name even though *this* session has zero prior
+turns — profiles are keyed by user, not session.
+
+### Flow 4 — Profile gate doesn't fire on dataset Q&A (cost guarantee)
+
+```bash
+uv run cs-agent --session qa --user fresh -v
+```
+
+```
+you> How many refund requests did we get?
+```
+
+The agent loop runs but **no profile-update LLM call follows**. Confirm:
+
+```bash
+ls profiles/fresh.json   # No such file or directory
+```
+
+The cheap regex gate short-circuits — dataset Q&A turns pay zero extra
+LLM cost.
+
+### Flow 5 — Session isolation
+
+```bash
+uv run cs-agent --session alpha --user grader
+# ask one question, then exit
+uv run cs-agent --session beta --user grader
+# Banner: 'starting new session beta' (NOT 'resumed'). Histories are independent.
+```
+
+### Flow 6 — Out-of-scope still gracefully declines
+
+```bash
+uv run cs-agent --session demo --user grader
+```
+
+```
+you> Who won the 2024 Champions League?
+you> What's the best CRM software?
+```
+
+Both land in the red `out-of-scope decline` panel, and bypass the profile
+node entirely (an off-topic decline carries no user-relevant info).
+
+### Flow 7 — Programmatic verifiers (one-shot, no REPL)
+
+```bash
+uv run python scripts/verify_task1.py    # 10 single-turn cases  (Task 1)
+uv run python scripts/verify_task2.py    # 2 multi-turn cases    (Task 2, tmp dirs)
+```
+
+Both exit `0` on success and print a per-case PASS/FAIL table.
+
+### Flow 8 — Targeted pytest runs
+
+```bash
+# Single test by name
+uv run python -m pytest tests/test_profile_integration.py::test_profile_recall_across_sessions -v
+
+# Just one test file
+uv run python -m pytest tests/test_episodic_integration.py -v
+
+# Verbose mode for the CLI surfaces router fallback / loop / profile-update INFO logs
+uv run cs-agent --session demo --user ofir -v
+```
+
+### Inspection cheat-sheet
+
+```bash
+sqlite3 checkpoints.sqlite ".tables"
+sqlite3 checkpoints.sqlite "SELECT DISTINCT thread_id FROM checkpoints;"
+ls profiles/
+python -m json.tool profiles/ofir.json
 ```
 
 ---
@@ -140,17 +317,21 @@ The compiled graph in `src/cs_agent/agent/graph.py`:
 START
   |
   v
-router  --[out_of_scope]--> decline ----> END
+router  --[out_of_scope]--> decline -----------------> END
   |
   v
 agent  <-----------------+
   |                       |
   +--[tool_calls?]--> tools
   |
-  +--[done]--> END
+  +--[done]----------> profile --> END
   |
-  +--[loop / max-iter]--> fallback --> END
+  +--[loop / max-iter]--> fallback --> profile --> END
 ```
+
+`profile` is a no-op for ~all dataset turns (cheap regex gate); it only
+invokes the LLM and writes to disk when the latest user message contains
+high-signal personal markers. Out-of-scope declines bypass `profile`.
 
 ### State
 
@@ -161,9 +342,25 @@ class GraphState(TypedDict, total=False):
     messages: Annotated[list[BaseMessage], add_messages]
     route: Literal["structured", "unstructured", "out_of_scope"] | None
     iterations: int                # reset per turn; budget for the ReAct loop
-    user_id: str                   # for the upcoming Task 2b profile module
+    user_id: str                   # used by Task 2b to key the JSON profile
     pending_query: str | None      # reserved for Bonus B (recommender)
 ```
+
+The CLI passes only the *new* `HumanMessage` per turn, plus an explicit
+`iterations: 0, route: None` reset; the `add_messages` reducer + the
+`SqliteSaver` checkpointer own the running history.
+
+### Persistence
+
+| What | Where | Lifetime | Format |
+|---|---|---|---|
+| Conversation history | `checkpoints.sqlite` | per `--session` (thread) | LangGraph `SqliteSaver` |
+| User facts | `profiles/<user_id>.json` | per `--user` | Plain JSON, `UserProfile` Pydantic schema |
+
+The profile is intentionally NOT in `GraphState` — it's per-user (one user
+can have many sessions), so it's loaded lazily from disk on every turn.
+This also lets a grader `cat profiles/ofir.json` to inspect the agent's
+memory directly.
 
 ---
 
@@ -253,18 +450,27 @@ assignment/
 │   │   ├── state.py                 # GraphState
 │   │   ├── prompts.py               # ROUTER_SYSTEM, AGENT_SYSTEM_TEMPLATE, ROUTE_HINTS
 │   │   ├── router.py                # RouterDecision + classify + router_node
-│   │   ├── nodes.py                 # agent_node, decline_node, fallback_node, _is_loop
+│   │   ├── nodes.py                 # agent_node, decline_node, fallback_node, profile_update_node
 │   │   └── graph.py                 # build_graph()
-│   └── memory/                      # placeholder for Task 2
+│   └── memory/
+│       ├── checkpoint.py            # Task 2a: SqliteSaver factory
+│       └── profile.py               # Task 2b: UserProfile + load/save + gate
 ├── scripts/
-│   └── verify_task1.py              # 10-case end-to-end verifier
+│   ├── verify_task1.py              # 10-case end-to-end verifier (Task 1)
+│   └── verify_task2.py              # 2-case multi-turn verifier (Task 2)
 ├── tests/
 │   ├── test_tools.py                # unit (fixture DataFrame), 26 tests
 │   ├── test_tools_integration.py    # 13 live-DataFrame tests, marked 'integration'
 │   ├── test_router.py               # 13 unit tests with mocked LLMs
-│   └── test_agent_integration.py    # 10 parametrized live tests, marked 'integration'
+│   ├── test_agent_integration.py    # 10 parametrized live tests, marked 'integration'
+│   ├── test_checkpoint.py           # 6 unit tests for the saver factory (Task 2a)
+│   ├── test_episodic_integration.py # 3 live tests for cross-restart memory (Task 2a)
+│   ├── test_profile.py              # 32 unit tests for profile gate/schema/IO/node (Task 2b)
+│   └── test_profile_integration.py  # 3 live tests for cross-session recall (Task 2b)
+├── checkpoints.sqlite               # gitignored (created on first CLI run)
+├── profiles/                        # gitignored (created on first personal-info turn)
 ├── data/                            # gitignored
-└── .fon/check/config.yaml           # documents one false-positive in fon's import scan
+└── .fon/check/config.yaml           # documents fon-check exceptions
 ```
 
 ---
@@ -307,10 +513,6 @@ worth knowing.
 
 ## Coming next
 
-- **Task 2a — Episodic memory:** swap in a `SqliteSaver` checkpointer so
-  conversation state persists across restarts using the `--session` flag.
-- **Task 2b — User profile:** per-user JSON profile updated by a small LLM at
-  the end of each turn; injected into the agent's system prompt.
 - **Task 3 — MCP server:** wrap ≥3 tools in a FastMCP streamable-HTTP server
   and add a client snippet to this README.
 - **Bonus A — Streamlit UI:** `streamlit run …` chat interface with a sidebar

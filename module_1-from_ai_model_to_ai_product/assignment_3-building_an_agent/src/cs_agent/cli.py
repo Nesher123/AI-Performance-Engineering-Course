@@ -10,9 +10,11 @@ The REPL prints every reasoning step (router decision, tool calls,
 observations, fallbacks, final answer) in a colour-coded ``rich`` trace, so the
 grader can see *how* the agent arrived at its answer — not just the answer.
 
-Within a single CLI session, conversation messages accumulate in memory so
-follow-up turns work naturally ("Show me 3 examples of REFUND" → "show me 3
-more"). Persistence across restarts is added in Task 2a via SqliteSaver.
+Episodic memory (Task 2a) is on by default: the graph is compiled with a
+``SqliteSaver`` checkpointer keyed by ``--session`` (the LangGraph
+``thread_id``). Each turn invokes the graph with only the *new* HumanMessage
+plus a per-turn reset of ``iterations`` / ``route``; the checkpointer owns the
+running history. So "show me 3 more" works the next day, not just this minute.
 """
 
 from __future__ import annotations
@@ -24,16 +26,18 @@ from typing import Any
 
 from langchain_core.messages import (
     AIMessage,
-    BaseMessage,
     HumanMessage,
     ToolMessage,
 )
+from langchain_core.runnables import RunnableConfig
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.text import Text
 
 from cs_agent.agent.graph import build_graph
+from cs_agent.agent.state import GraphState
+from cs_agent.memory.checkpoint import get_checkpointer
 
 # Suppress library log spam from inside agent_node ("loop detected — short-circuiting")
 # unless the user explicitly raises the level.
@@ -113,12 +117,13 @@ def _render_terminal(node: str, update: dict[str, Any], console: Console) -> Non
 def _render_chunk(
     chunk: dict[str, dict[str, Any]],
     console: Console,
-    messages: list[BaseMessage],
 ) -> None:
-    """Print a single LangGraph stream update and accumulate its messages."""
+    """Print a single LangGraph stream update.
+
+    The checkpointer owns conversation history now; the renderer is purely a
+    visualiser of the per-turn delta and does not accumulate state.
+    """
     for node_name, update in chunk.items():
-        for msg in update.get("messages", []) or []:
-            messages.append(msg)
         if node_name == "router":
             _render_router(update, console)
         elif node_name == "agent":
@@ -129,10 +134,31 @@ def _render_chunk(
             _render_terminal(node_name, update, console)
 
 
-def _print_banner(console: Console, session: str, user: str) -> None:
+def _count_human_turns(graph, config: RunnableConfig) -> int:
+    """Best-effort count of prior HumanMessages persisted under ``thread_id``.
+
+    Returns 0 for a fresh thread (no checkpoint yet) or if anything goes
+    wrong while reading state. Used purely for the welcome banner; never
+    raises into the REPL.
+    """
+    try:
+        snapshot = graph.get_state(config)
+    except Exception:  # noqa: BLE001 — banner is informational; never crash on it
+        return 0
+    if snapshot is None:
+        return 0
+    messages = (snapshot.values or {}).get("messages") or []
+    return sum(1 for m in messages if isinstance(m, HumanMessage))
+
+
+def _print_banner(console: Console, session: str, user: str, prior_turns: int) -> None:
+    if prior_turns:
+        status = f"resumed session [cyan]{session}[/] ([bold]{prior_turns}[/] prior turns)"
+    else:
+        status = f"starting new session [cyan]{session}[/]"
     body = (
         "[bold]Customer Service Data Analyst[/] — Bitext dataset agent\n"
-        f"session: [cyan]{session}[/]   user: [cyan]{user}[/]\n"
+        f"{status}   user: [cyan]{user}[/]\n"
         f"type [yellow]{', '.join(sorted(EXIT_WORDS))}[/] (or Ctrl-C / Ctrl-D) to quit"
     )
     console.print(Panel.fit(body, title="cs-agent", border_style="blue"))
@@ -169,11 +195,15 @@ def main(argv: list[str] | None = None) -> int:
         logging.getLogger().setLevel(logging.INFO)
 
     console = Console()
-    graph = build_graph()
+    # Open the checkpointer for the lifetime of the REPL. Compile the graph
+    # against it so every invoke/stream call is automatically persisted under
+    # ``thread_id = args.session``.
+    checkpointer = get_checkpointer()
+    graph = build_graph(checkpointer=checkpointer)
 
-    _print_banner(console, args.session, args.user)
-
-    messages: list[BaseMessage] = []
+    config: RunnableConfig = {"configurable": {"thread_id": args.session}}
+    prior_turns = _count_human_turns(graph, config)
+    _print_banner(console, args.session, args.user, prior_turns)
 
     while True:
         try:
@@ -188,23 +218,26 @@ def main(argv: list[str] | None = None) -> int:
             console.print("[dim]bye[/]")
             return 0
 
-        messages.append(HumanMessage(question))
-        initial: dict[str, Any] = {
-            "messages": messages,
+        # Pass ONLY the new HumanMessage. The checkpointer's ``add_messages``
+        # reducer appends it to the persisted history. Per-turn fields are
+        # explicitly reset so leftover ``iterations`` / ``route`` from the
+        # previous turn never leak into this one (Step 3 contract).
+        initial: GraphState = {
+            "messages": [HumanMessage(question)],
             "iterations": 0,
             "user_id": args.user,
             "route": None,
         }
 
         try:
-            for chunk in graph.stream(initial, stream_mode="updates"):
-                _render_chunk(chunk, console, messages)
+            for chunk in graph.stream(initial, config=config, stream_mode="updates"):
+                _render_chunk(chunk, console)
         except Exception as exc:  # noqa: BLE001 — interactive REPL: never crash on a single bad turn
+            # The checkpointer hasn't committed the failed turn's tail (the
+            # graph errored before completion), but the HumanMessage we passed
+            # in may already be persisted. That's fine — surfacing it as the
+            # last user turn is honest and keeps the thread coherent.
             console.print(f"[red]error during turn:[/] {exc!r}")
-            # Keep messages list consistent: drop the human message we appended
-            # so the next turn doesn't replay the failed one.
-            if messages and messages[-1] is initial["messages"][-1]:
-                messages.pop()
 
 
 if __name__ == "__main__":

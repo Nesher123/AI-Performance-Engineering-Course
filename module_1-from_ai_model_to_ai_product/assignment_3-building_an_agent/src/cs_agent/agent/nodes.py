@@ -5,19 +5,34 @@
 - ``decline_node``: terminal node for out-of-scope queries.
 - ``should_continue``: conditional-edge function deciding whether the agent
   asked for a tool call (loop back to the tool node) or is done (END).
+- ``profile_update_node``: post-agent node that updates the per-user JSON
+  profile when the latest human message looks personal-info-bearing.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Literal
 
-from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 
 from cs_agent.agent.prompts import build_agent_system
 from cs_agent.agent.state import GraphState
 from cs_agent.config import MAX_ITERATIONS
-from cs_agent.llm import get_agent_llm
+from cs_agent.llm import get_agent_llm, get_router_llm
+from cs_agent.memory.profile import (
+    UserProfile,
+    is_personal_info_bearing,
+    load_profile,
+    now_utc,
+    save_profile,
+)
 from cs_agent.tools.registry import DATA_TOOLS
 
 logger = logging.getLogger(__name__)
@@ -35,6 +50,25 @@ MAX_ITER_MESSAGE = (
 )
 
 LOOP_FALLBACK_TEMPLATE = "Based on the {tool_name} tool result:\n\n{content}"
+
+PROFILE_UPDATE_SYSTEM = """\
+You maintain a small structured profile for ONE user across sessions.
+
+You will receive (a) the user's CURRENT profile as JSON and (b) the LATEST
+turn — the human message and the agent's reply. Return the FULL UPDATED
+profile that incorporates anything new the user volunteered.
+
+Rules:
+- Preserve the existing user_id verbatim.
+- Add new facts; refine existing ones if the user contradicted them; drop
+  items the user retracts ("forget that I…"). Never invent facts the user
+  did not state.
+- Keep `notable_facts` short (one short sentence per item) and de-duplicated.
+- Use lowercase short phrases for `topics_of_interest` (e.g. "refunds",
+  "complaints").
+- If the latest turn contains NO new personal info, return the current
+  profile unchanged.
+- Return ONLY a JSON object matching the UserProfile schema. No prose."""
 
 
 def _is_loop(state: GraphState) -> tuple[bool, ToolMessage | None]:
@@ -73,6 +107,12 @@ def agent_node(state: GraphState) -> dict:
     3. Invokes the agent LLM with all tools bound. The LLM either emits a
        final answer (no tool calls) or one or more ``tool_calls`` that the
        graph will execute via ``ToolNode`` and then route back here.
+
+    Per-turn contract (Task 2a): the caller is expected to pass
+    ``iterations=0`` and ``route=None`` in the per-turn invoke dict so leftover
+    fields from a previously-checkpointed turn don't leak into this one.
+    The ``state.get("iterations", 0)`` default below is a defensive guard for
+    external callers that forget the reset; it does NOT replace the contract.
     """
     iterations = state.get("iterations", 0)
     if iterations >= MAX_ITERATIONS:
@@ -83,7 +123,11 @@ def agent_node(state: GraphState) -> dict:
         }
 
     route = state.get("route")
-    system_prompt = build_agent_system(route=route)
+    user_id = state.get("user_id") or "anon"
+    # ``build_agent_system`` reads the per-user profile from disk lazily, so
+    # the latest profile (including updates from the previous turn) is
+    # injected on every agent step.
+    system_prompt = build_agent_system(route=route, user_id=user_id)
 
     llm_with_tools = get_agent_llm().bind_tools(DATA_TOOLS)
     messages = state.get("messages") or []
@@ -144,3 +188,92 @@ def fallback_node(state: GraphState) -> dict:
         )
         return {"messages": [AIMessage(text)]}
     return {"messages": [AIMessage(MAX_ITER_MESSAGE.format(max_iter=MAX_ITERATIONS))]}
+
+
+def _last_human_message(state: GraphState) -> HumanMessage | None:
+    """Return the most recent ``HumanMessage`` in the conversation, or None."""
+    messages = state.get("messages") or []
+    return next(
+        (m for m in reversed(messages) if isinstance(m, HumanMessage)),
+        None,
+    )
+
+
+def _last_agent_answer(state: GraphState) -> str:
+    """Return the agent's most recent user-facing reply (no tool-call placeholder).
+
+    Used to give the profile-update LLM the FULL latest turn (human + agent)
+    so it can disambiguate references like "the second one" or
+    "yes, that one".
+    """
+    messages = state.get("messages") or []
+    for m in reversed(messages):
+        if isinstance(m, AIMessage) and m.content and not m.tool_calls:
+            return str(m.content)
+    return ""
+
+
+def profile_update_node(state: GraphState) -> dict:
+    """Update the per-user profile if the latest human message is personal-info-bearing.
+
+    Pipeline:
+    1. Cheap regex gate (``is_personal_info_bearing``). On a miss we return
+       immediately — no LLM call. This keeps the cost of dataset Q&A turns
+       (the dominant case) at exactly zero extra tokens.
+    2. Load the current profile from disk.
+    3. Ask the small router LLM to return a fully updated profile via
+       structured output (Pydantic schema = ``UserProfile``).
+    4. Stamp ``last_updated`` and persist atomically.
+
+    Failure handling: if step 3 raises (Nebius timeout, schema violation,
+    etc.) we log a warning and leave the profile untouched. The agent's
+    user-facing answer has already been emitted upstream, so a profile-update
+    miss doesn't block the response.
+
+    Returns ``{}`` — the profile lives on disk, NOT in graph state, so this
+    node never mutates the checkpointed conversation.
+    """
+    last_human = _last_human_message(state)
+    if last_human is None:
+        return {}
+
+    text = str(last_human.content)
+    if not is_personal_info_bearing(text):
+        return {}
+
+    user_id = state.get("user_id") or "anon"
+    current = load_profile(user_id)
+
+    try:
+        structured = get_router_llm().with_structured_output(UserProfile)
+        payload = json.dumps(
+            {
+                "current_profile": current.model_dump(mode="json"),
+                "latest_turn": {
+                    "user": text,
+                    "agent": _last_agent_answer(state),
+                },
+            },
+            ensure_ascii=False,
+        )
+        updated_raw = structured.invoke([SystemMessage(PROFILE_UPDATE_SYSTEM), HumanMessage(payload)])
+        # ``with_structured_output`` may return either a UserProfile instance
+        # or a dict (depending on backend); normalise.
+        if isinstance(updated_raw, UserProfile):
+            updated = updated_raw
+        else:
+            updated = UserProfile.model_validate(updated_raw)
+    except Exception as exc:  # noqa: BLE001 — LLM/parse errors must not break the turn
+        logger.warning("profile update LLM failed (%s); leaving profile untouched", exc)
+        return {}
+
+    # Stamp the canonical user_id (LLM may echo it back wrong) and the
+    # update time, then persist.
+    updated.user_id = user_id
+    updated.last_updated = now_utc()
+    try:
+        save_profile(updated)
+    except OSError as exc:
+        logger.warning("profile save failed (%s); profile NOT persisted", exc)
+
+    return {}

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from cs_agent.agent.state import Route
 from cs_agent.data.loader import dataset_summary
+from cs_agent.memory.profile import load_profile
 
 ROUTER_SYSTEM = """\
 You are the routing classifier for a data-analyst agent that answers questions
@@ -49,6 +50,12 @@ Tie-breaking:
   can you do?") -> structured. The agent will respond warmly without calling
   tools. Reserve out_of_scope ONLY for questions about topics unrelated to
   the Bitext customer-support dataset.
+- META-QUESTIONS about the agent itself are NOT out-of-scope. The agent
+  maintains a per-user memory; questions like "what do you remember about
+  me?", "do you know my name?", "remind me what I told you", or any
+  introduction/preference statement ("my name is X", "I prefer Y", "remember
+  that …") -> structured. The agent answers from its persisted profile
+  without calling any tool.
 
 Return ONLY a JSON object matching the requested schema. No extra prose."""
 
@@ -105,6 +112,15 @@ do, reply briefly and warmly in 1-2 sentences. Mention that you analyse the
 Bitext customer-support dataset and offer 2-3 example questions
 (e.g. "How many refund requests?", "Summarize the FEEDBACK category",
 "Show me 5 examples from REFUND"). Do NOT call any tools for these messages.
+
+USER PROFILE (persisted across sessions)
+The block below is a distilled set of facts about the current user, refreshed
+from disk on every turn. Use it to personalise wording (greet by name when
+known, respect stated preferences). When the user asks "what do you remember
+about me?" you should ANSWER from this block directly — do NOT call any tool.
+If the block says "No prior facts about this user yet.", admit that.
+
+{profile_block}
 """
 
 
@@ -131,28 +147,38 @@ structured/unstructured distinction operational meaning instead of cosmetic.
 """
 
 
-def build_agent_system(route: Route | str | None = None) -> str:
-    """Render the agent system prompt with the live dataset summary baked in.
+def build_agent_system(
+    route: Route | str | None = None,
+    user_id: str = "anon",
+) -> str:
+    """Render the agent system prompt with the live dataset summary AND the
+    persisted user profile baked in.
 
     Args:
         route: optional router classification for the current turn. When given,
             a short steering paragraph is appended that biases tool selection
             toward the structured tools or the summarize tool. Defaults to the
             'structured' hint when omitted or unrecognised.
+        user_id: stable user identifier (CLI ``--user``). The matching profile
+            JSON is loaded fresh on every call, so updates persisted in the
+            previous turn are visible immediately. Defaults to ``"anon"``.
 
-    Cheap: ``dataset_summary`` is ``lru_cache``d, so this only does string
-    formatting after the first call.
+    Cheap: ``dataset_summary`` is ``lru_cache``d. Profile loading does a single
+    JSON read per turn — negligible compared to the LLM round-trip that follows.
     """
     s = dataset_summary()
     intents_block = "\n".join(
         f"  - {cat}: {', '.join(intents)}" for cat, intents in s["intents_per_category"].items()
     )
+    profile = load_profile(user_id)
+    profile_block = profile.render_for_prompt()
     base = AGENT_SYSTEM_TEMPLATE.format(
         n_rows=s["n_rows"],
         columns=s["columns"],
         n_categories=len(s["categories"]),
         categories=", ".join(s["categories"]),
         intents_per_category=intents_block,
+        profile_block=profile_block,
     )
     hint = ROUTE_HINTS.get(route or "structured", ROUTE_HINTS["structured"])
     return f"{base}\n\n{hint}"

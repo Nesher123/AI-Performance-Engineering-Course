@@ -18,6 +18,9 @@ Live integration of the router is exercised in
 
 from __future__ import annotations
 
+from typing import cast
+
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 
 from cs_agent.agent import router as router_mod
@@ -28,6 +31,7 @@ from cs_agent.agent.router import (
     route_from_router,
     router_node,
 )
+from cs_agent.agent.state import GraphState
 
 
 class _FakeStructuredLLM:
@@ -69,7 +73,7 @@ def test_classify_with_returns_decision():
     decision = RouterDecision(route="structured", reason="x")
     llm = _FakeLLM(_FakeStructuredLLM(decision=decision))
 
-    result = _classify_with(llm, "How many refund requests?")
+    result = _classify_with(cast(BaseChatModel, llm), "How many refund requests?")
 
     assert isinstance(result, RouterDecision)
     assert result.route == "structured"
@@ -82,7 +86,7 @@ def test_classify_with_propagates_llm_errors():
     llm = _FakeLLM(_FakeStructuredLLM(error=RuntimeError("nebius timeout")))
 
     try:
-        _classify_with(llm, "anything")
+        _classify_with(cast(BaseChatModel, llm), "anything")
     except RuntimeError as exc:
         assert "nebius timeout" in str(exc)
     else:
@@ -152,7 +156,7 @@ def test_router_node_returns_classified_route(monkeypatch):
     monkeypatch.setattr(router_mod, "get_router_llm", lambda: primary_llm)
     monkeypatch.setattr(router_mod, "get_agent_llm", lambda: primary_llm)
 
-    state = {"messages": [HumanMessage("Summarize complaints")]}
+    state: GraphState = {"messages": [HumanMessage("Summarize complaints")]}
     update = router_node(state)
     assert update == {"route": "unstructured"}
 
@@ -164,14 +168,14 @@ def test_router_node_defaults_to_structured_when_both_fail(monkeypatch):
     monkeypatch.setattr(router_mod, "get_router_llm", lambda: failing)
     monkeypatch.setattr(router_mod, "get_agent_llm", lambda: failing)
 
-    state = {"messages": [HumanMessage("How many refund requests?")]}
+    state: GraphState = {"messages": [HumanMessage("How many refund requests?")]}
     update = router_node(state)
 
     assert update == {"route": "structured"}
 
 
 def test_router_node_defaults_to_structured_when_no_human_message():
-    state = {"messages": [AIMessage("only AI messages here")]}
+    state: GraphState = {"messages": [AIMessage("only AI messages here")]}
     assert router_node(state) == {"route": "structured"}
 
 

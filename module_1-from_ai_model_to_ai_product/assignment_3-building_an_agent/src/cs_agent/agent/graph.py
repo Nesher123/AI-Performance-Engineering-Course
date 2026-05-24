@@ -1,6 +1,6 @@
 """Compile the full LangGraph StateGraph for the customer-service agent.
 
-Topology:
+Topology (Task 2-complete):
 
     START
       |
@@ -11,10 +11,18 @@ Topology:
     agent  ◄────────────────┐
       | tool_calls?         │
       ├── yes ──► tools ────┘
-      └── no ──► END
+      ├── fallback (loop / max-iter) ──► fallback ──► profile ──► END
+      └── no (final answer) ────────────────────────► profile ──► END
 
-A ``checkpointer`` may be passed through; Task 1 leaves it as ``None`` (no
-persistence yet) and Task 2a will pass a ``SqliteSaver``.
+The ``profile`` node is the per-user profile updater (Task 2b). It runs
+unconditionally after a successful or fallback agent turn, but its FIRST
+action is a cheap regex gate that returns immediately for non-personal
+turns. Out-of-scope declines bypass the profile entirely — those messages
+carry no user-relevant information.
+
+A ``checkpointer`` may be passed through. Task 1 left it as ``None`` (no
+persistence). Task 2a passes a ``SqliteSaver`` so messages survive across
+process restarts.
 """
 
 from __future__ import annotations
@@ -28,6 +36,7 @@ from cs_agent.agent.nodes import (
     agent_node,
     decline_node,
     fallback_node,
+    profile_update_node,
     should_continue,
 )
 from cs_agent.agent.router import route_from_router, router_node
@@ -44,6 +53,7 @@ def build_graph(checkpointer: Any | None = None):
     builder.add_node("tools", ToolNode(DATA_TOOLS))
     builder.add_node("decline", decline_node)
     builder.add_node("fallback", fallback_node)
+    builder.add_node("profile", profile_update_node)
 
     builder.add_edge(START, "router")
     builder.add_conditional_edges(
@@ -51,13 +61,17 @@ def build_graph(checkpointer: Any | None = None):
         route_from_router,
         {"agent": "agent", "decline": "decline"},
     )
+    # Successful agent turns and fallbacks both pass through the profile
+    # updater on the way out. The updater is a cheap no-op when the latest
+    # human message has no personal-info markers.
     builder.add_conditional_edges(
         "agent",
         should_continue,
-        {"tools": "tools", "fallback": "fallback", "end": END},
+        {"tools": "tools", "fallback": "fallback", "end": "profile"},
     )
     builder.add_edge("tools", "agent")
+    builder.add_edge("fallback", "profile")
+    builder.add_edge("profile", END)
     builder.add_edge("decline", END)
-    builder.add_edge("fallback", END)
 
     return builder.compile(checkpointer=checkpointer)
