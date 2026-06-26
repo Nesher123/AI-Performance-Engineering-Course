@@ -1,0 +1,27 @@
+{
+  "command": [
+    "/opt/homebrew/bin/uv",
+    "run",
+    "--project",
+    "/Users/ofir.n/GIT/DI/di-mavericks-fire",
+    "python",
+    "-m",
+    "swebench.harness.run_evaluation",
+    "--dataset_name",
+    "princeton-nlp/SWE-bench_Verified",
+    "--split",
+    "test",
+    "--predictions_path",
+    "/Users/ofir.n/GIT/DI/di-mavericks-fire/runs/tiny-local-cli-002/run-agent/preds.json",
+    "--max_workers",
+    "1",
+    "--run_id",
+    "tiny-local-cli-002",
+    "--report_dir",
+    "/Users/ofir.n/GIT/DI/di-mavericks-fire/runs/tiny-local-cli-002/run-eval/reports"
+  ],
+  "cwd": "/Users/ofir.n/GIT/DI/di-mavericks-fire/runs/tiny-local-cli-002/run-eval",
+  "finished_at": "2026-06-26T13:24:42+00:00",
+  "returncode": 0,
+  "started_at": "2026-06-26T13:22:01+00:00"
+}

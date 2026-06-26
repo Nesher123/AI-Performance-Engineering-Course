@@ -1,0 +1,17 @@
+{
+  "agent_config": "benchmarks/swebench.yaml",
+  "cost_limit": 0.0,
+  "created_at": "2026-06-26T13:33:09+00:00",
+  "dataset_name": "princeton-nlp/SWE-bench_Verified",
+  "git_commit": "c511408c4c1956a6b0b8e808d1956578b5670070",
+  "mlflow_experiment": "local-smoke-evaluate-agent",
+  "mlflow_tracking_uri": "sqlite:////var/folders/4p/3v7c85y55qdc7jt3wv838n700000gp/T/evaluate-agent-smoke-g23vlrzn/mlflow.db",
+  "model": "nebius/moonshotai/Kimi-K2.6",
+  "project_root": "/Users/ofir.n/GIT/DI/di-mavericks-fire",
+  "run_dir": "/var/folders/4p/3v7c85y55qdc7jt3wv838n700000gp/T/evaluate-agent-smoke-g23vlrzn/runs/local-smoke",
+  "run_id": "local-smoke",
+  "split": "test",
+  "subset": "verified",
+  "task_slice": "0:3",
+  "workers": 1
+}

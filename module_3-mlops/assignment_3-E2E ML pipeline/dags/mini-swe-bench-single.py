@@ -1,7 +1,7 @@
 import os
+import subprocess
 from datetime import datetime
 from pathlib import Path
-import subprocess
 
 from airflow.decorators import dag, task
 

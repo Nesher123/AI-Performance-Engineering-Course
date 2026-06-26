@@ -1,0 +1,35 @@
+{
+  "artifact_root": "runs/tiny-local-cli-002",
+  "created_at": "2026-06-26T13:18:56+00:00",
+  "finished_at": "2026-06-26T13:38:20+00:00",
+  "git_commit": "c511408c4c1956a6b0b8e808d1956578b5670070",
+  "metrics": {
+    "empty_patch_count": 0,
+    "evaluated_count": 1,
+    "patch_applied_count": 1,
+    "patch_failed_apply_count": 0,
+    "predictions_count": 1,
+    "resolve_rate": 1.0,
+    "resolved_count": 1,
+    "unresolved_count": 0
+  },
+  "mlflow": {
+    "mlflow_artifact_uri": "/Users/ofir.n/GIT/DI/di-mavericks-fire/mlruns/1/b48d6617d0484270a69585cd1bc85553/artifacts",
+    "mlflow_experiment_id": "1",
+    "mlflow_run_id": "b48d6617d0484270a69585cd1bc85553",
+    "mlflow_tracking_uri": "sqlite:////Users/ofir.n/GIT/DI/di-mavericks-fire/mlflow.db"
+  },
+  "paths": {
+    "agent_command": "run-agent/command.json",
+    "agent_log": "run-agent/run.log",
+    "agent_predictions": "run-agent/preds.json",
+    "agent_trajectories": "run-agent/trajectories",
+    "config": "config.json",
+    "eval_command": "run-eval/command.json",
+    "eval_log": "run-eval/run.log",
+    "eval_logs": "run-eval/logs",
+    "metrics": "metrics.json"
+  },
+  "project_root": "/Users/ofir.n/GIT/DI/di-mavericks-fire",
+  "run_id": "tiny-local-cli-002"
+}

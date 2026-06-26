@@ -1,0 +1,16 @@
+{
+  "command": [
+    "/opt/homebrew/bin/uv",
+    "run",
+    "--project",
+    "/Users/ofir.n/GIT/DI/di-mavericks-fire",
+    "python",
+    "-c",
+    "\nimport json\nimport sys\n\nimport mlflow\n\npayload = json.loads(open(sys.argv[1]).read())\nconfig = payload[\"config\"]\nmetrics = payload[\"metrics\"]\nmlflow.set_tracking_uri(config[\"mlflow_tracking_uri\"])\nmlflow.set_experiment(config[\"mlflow_experiment\"])\nwith mlflow.start_run(run_name=config[\"run_id\"]) as run:\n    params = {\n        \"run_id\": config[\"run_id\"],\n        \"split\": config[\"split\"],\n        \"subset\": config[\"subset\"],\n        \"dataset_name\": config[\"dataset_name\"],\n        \"workers\": config[\"workers\"],\n        \"model\": config[\"model\"],\n        \"task_slice\": config.get(\"task_slice\") or \"\",\n        \"cost_limit\": \"\" if config.get(\"cost_limit\") is None else config[\"cost_limit\"],\n        \"git_commit\": config.get(\"git_commit\") or \"\",\n        \"artifact_root\": config[\"run_dir\"],\n    }\n    mlflow.log_params(params)\n    numeric_metrics = {\n        key: value\n        for key, value in metrics.items()\n        if isinstance(value, (int, float)) and not isinstance(value, bool)\n    }\n    mlflow.log_metrics(numeric_metrics)\n    mlflow.set_tags(\n        {\n            \"pipeline\": \"airflow-evaluate-agent\",\n            \"artifact_root\": config[\"run_dir\"],\n            \"local_run_id\": config[\"run_id\"],\n        }\n    )\n    mlflow.log_artifact(payload[\"config_path\"])\n    mlflow.log_artifact(payload[\"metrics_path\"])\n    mlflow.log_artifact(payload[\"manifest_path\"])\n    result = {\n        \"mlflow_run_id\": run.info.run_id,\n        \"mlflow_experiment_id\": run.info.experiment_id,\n        \"mlflow_artifact_uri\": run.info.artifact_uri,\n        \"mlflow_tracking_uri\": config[\"mlflow_tracking_uri\"],\n    }\nopen(payload[\"result_path\"], \"w\").write(json.dumps(result, indent=2, sort_keys=True) + \"\\n\")\n",
+    "/Users/ofir.n/GIT/DI/di-mavericks-fire/runs/tiny-local-cli-002/mlflow_payload.json"
+  ],
+  "cwd": "/Users/ofir.n/GIT/DI/di-mavericks-fire",
+  "finished_at": "2026-06-26T13:25:01+00:00",
+  "returncode": 0,
+  "started_at": "2026-06-26T13:24:58+00:00"
+}

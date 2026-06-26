@@ -1,0 +1,26 @@
+{
+  "command": [
+    "/opt/homebrew/bin/uv",
+    "run",
+    "mini-extra",
+    "swebench",
+    "--subset",
+    "verified",
+    "--split",
+    "test",
+    "--model",
+    "nebius/moonshotai/Kimi-K2.6",
+    "--config",
+    "benchmarks/swebench.yaml",
+    "--workers",
+    "1",
+    "-o",
+    "/Users/ofir.n/GIT/DI/di-mavericks-fire/runs/tiny-local-cli-002/run-agent/trajectories",
+    "--slice",
+    "0:1"
+  ],
+  "cwd": "/Users/ofir.n/GIT/DI/di-mavericks-fire",
+  "finished_at": "2026-06-26T13:21:59+00:00",
+  "returncode": 0,
+  "started_at": "2026-06-26T13:18:58+00:00"
+}

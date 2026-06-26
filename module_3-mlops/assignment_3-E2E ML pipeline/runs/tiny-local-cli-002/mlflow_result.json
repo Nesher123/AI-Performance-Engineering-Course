@@ -1,0 +1,6 @@
+{
+  "mlflow_artifact_uri": "/Users/ofir.n/GIT/DI/di-mavericks-fire/mlruns/1/b48d6617d0484270a69585cd1bc85553/artifacts",
+  "mlflow_experiment_id": "1",
+  "mlflow_run_id": "b48d6617d0484270a69585cd1bc85553",
+  "mlflow_tracking_uri": "sqlite:////Users/ofir.n/GIT/DI/di-mavericks-fire/mlflow.db"
+}

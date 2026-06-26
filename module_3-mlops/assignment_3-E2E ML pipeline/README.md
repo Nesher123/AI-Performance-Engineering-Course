@@ -8,7 +8,7 @@
 
 **Learning objective**: Get hands-on experience turning an ad-hoc coding-agent evaluation script into an automated, observable, versioned, and durable Airflow pipeline with a structured data footprint: datasets, artifacts, metadata, metrics, logs, and trajectories.
 
-**Inspired by**: https://github.com/GlebBerjoskin/mlops-assignment
+**Inspired by**: <https://github.com/GlebBerjoskin/mlops-assignment>
 
 ---
 
@@ -43,8 +43,10 @@ Your goal is to turn these ad-hoc scripts from `scripts/` into a proper, configu
 As a starting point with Airflow, you are provided with `run-airflow-standalone.sh` and a dag in `dags/` that re-implements `scripts/mini-swe-bench-single.sh`.
 
 **Airflow pipeline requirements**:
+
 - Configurable from Airflow parameters. Required params: `split`, `subset`, `workers`. Useful optional params: `model`, `task_slice`, `run_id`, and `cost_limit`. No hard-code for experiment values.
 - All run artifacts are properly structured. E.g.,
+
 ```
 runs/
   <<run-id>>/
@@ -56,14 +58,16 @@ runs/
     metrics.json
     manifest.json
 ```
+
 - It's possible to re-construct the run based on the produced `<<run-id>>` folder: input SWE-bench tasks, configuration, output trajectories, predictions, evaluation logs, metrics, etc. Basically, you can just send a directory to someone -- and they will be able to grab the whole picture.
 - Each run metrics and parameters are logged to `MLflow`, one can easily compare different runs.
 - The easy-mode solution may call the scripts from Airflow with Python/Bash tasks. For a production-style solution, use `DockerOperator` to run the scripts in isolated environments. `Dockerfile` for the project is provided. In large-scale production, `DockerOperator` can be replaced with `KubernetesPodOperator`.
 - For the full solution, run artifacts are saved to remote long-term storage, such as Object Storage (S3). If you skip remote storage in the first iteration, still write a clear local `runs/<run-id>/` folder and document how it would be uploaded.
 
-**Deployment**
+**Deployment**:
+
 1. Easy mode: run Airflow with `run-airflow-standalone.sh` and focus on making the DAG configurable and reproducible.
-2. Production-style mode: deploy Airflow and MLflow locally on the VM using `docker compose`: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#running-airflow-in-docker
+2. Production-style mode: deploy Airflow and MLflow locally on the VM using `docker compose`: <https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#running-airflow-in-docker>
 3. MLflow should be reachable from the VM and used by the DAG to log parameters, metrics, and artifact references.
 
 Ultimately, the pipeline may look like: `run-mini-swe-agent` -> `swe-bench-eval` -> `log-artifacts-to-s3` -> `log-metrics-to-mlflow`.
@@ -163,9 +167,10 @@ Host sbkarasik-academy-playground
   ForwardAgent yes
 ```
 
-Connect to the VM. 
+Connect to the VM.
 
 Install the basic tools:
+
 ```bash
 # uv 
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -217,6 +222,7 @@ cd <repo-folder>
 These repositories are not meant to be used as-is in your final pipeline. They are reference material: read them to understand how `mini-swe-agent` writes trajectories, how SWE-bench expects predictions, and how the evaluation harness produces reports and logs.
 
 Install the dependencies:
+
 ```bash
 uv sync
 ```
@@ -226,15 +232,15 @@ Activate the venv: `source .venv/bin/activate`.
 Add your `NEBIUS_API_KEY` to `.env`.
 
 **Check your setup**:
+
 - Run the script: `bash scripts/mini-swe-bench-single.sh`
 - Via Airflow:
   - Run the Airflow: `bash run-airflow-standalone`
   - Forward port `8080` -- this is where Airflow is running.
     - VSCode/Cursor may do it automatically for you.
     - Plain SSH: `ssh -L 8080:localhost:8080 <user>@<vm-host>`.
-  - Open it: http://localhost:8080
+  - Open it: <http://localhost:8080>
   - Try running the example DAG `mini-swe-bench-single`.
-
 
 Congratulations! You are all set.
 
@@ -245,7 +251,7 @@ By the end of the mandatory assignment, your repo should contain enough code and
 ### Minimum Working Submission
 
 | File or directory | What to add or finish |
-|---|---|
+| --- | --- |
 | `dags/evaluate_agent.py` or an updated DAG in `dags/` | A configurable Airflow DAG with `prepare_run`, `run_agent`, `run_eval`, and `summarize_and_log` tasks |
 | Airflow params | At minimum: `split`, `subset`, and `workers`; optional but useful: `model`, `task_slice`, `run_id`, `cost_limit` |
 | `scripts/mini-swe-bench-batch.sh` or wrapper code | A way for the DAG to run mini-swe-agent with DAG-provided params and write outputs into `runs/<run-id>/run-agent/` |
@@ -259,7 +265,7 @@ This is the speedrun path: complete the existing scaffold, make the DAG configur
 ### Production-Style Additions
 
 | File or directory | What it adds |
-|---|---|
+| --- | --- |
 | `Dockerfile` | Repeatable execution environment for agent and evaluation steps |
 | `DockerOperator` usage in the DAG | Isolated execution instead of local subprocess calls |
 | `docker-compose.yaml` | Docker Compose deployment for Airflow and MLflow on the VM |
@@ -278,11 +284,10 @@ If full artifacts are too large to commit, commit a small manifest or example fo
 We care more about engineering judgment and traceability than about one lucky metric. A weak result with excellent provenance and analysis is better than a pasted number nobody can reproduce.
 
 | Area | Weight | What a strong submission shows |
-|---|---:|---|
+| --- | --- | --- |
 | **Configurable Airflow DAG** | 35% | The DAG implements the `run-agent -> run-evaluation` workflow, exposes `split`, `subset`, and `workers` as parameters, avoids hard-coded experiment values, and can be triggered reliably from the Airflow UI. A strong standalone Airflow solution is acceptable here. |
 | **Artifact structure and reproducibility** | 20% | Each run writes a structured `runs/<run-id>/` tree and includes enough inputs, outputs, trajectories, predictions, logs, and reports to reconstruct the run. Extra credit within this area for uploading artifacts to S3/Object Storage. |
 | **MLflow tracking** | 15% | Runs log parameters, metrics, run IDs, and artifact references so multiple evaluations can be compared in the MLflow UI. |
 | **Execution isolation** | 10% | Agent and evaluation work run in a documented, repeatable environment. `DockerOperator` with the project `Dockerfile` is the preferred production-style solution, but a clear standalone Airflow implementation without `DockerOperator` can still receive most of the credit if it is reproducible. |
 | **Docker Compose deployment** | 10% | Airflow and MLflow can run from `docker-compose.yaml` with documented setup and required environment variables. The Compose deployment should support the pipeline rather than become the main point of the assignment. |
 | **Report and reproducibility** | 10% | `REPORT.md` explains the architecture, how to trigger a run, where artifacts live, how to rerun by `run-id`, and what happened in at least one completed evaluation. |
-
