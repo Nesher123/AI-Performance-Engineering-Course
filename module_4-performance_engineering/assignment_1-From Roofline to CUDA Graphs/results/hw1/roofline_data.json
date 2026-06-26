@@ -1,0 +1,80 @@
+{
+  "spec": "Tesla T4",
+  "dtype": "torch.float16",
+  "peak_tflops": 65.0,
+  "peak_bw_tbps": 0.32,
+  "points": [
+    {
+      "label": "elementwise",
+      "series": "memory-bound",
+      "ai": 0.25,
+      "achieved_tflops": 0.060303885742265036
+    },
+    {
+      "label": "K=1",
+      "series": "compute-K (eager)",
+      "ai": 0.5,
+      "achieved_tflops": 0.060411797388611604
+    },
+    {
+      "label": "K=4",
+      "series": "compute-K (eager)",
+      "ai": 2.0,
+      "achieved_tflops": 0.06062012590471274
+    },
+    {
+      "label": "K=16",
+      "series": "compute-K (eager)",
+      "ai": 8.0,
+      "achieved_tflops": 0.05903479151534855
+    },
+    {
+      "label": "K=64",
+      "series": "compute-K (eager)",
+      "ai": 32.0,
+      "achieved_tflops": 0.058755930620426944
+    },
+    {
+      "label": "K=1",
+      "series": "compute-K (compiled)",
+      "ai": 0.5,
+      "achieved_tflops": 0.12001584124413468
+    },
+    {
+      "label": "K=4",
+      "series": "compute-K (compiled)",
+      "ai": 2.0,
+      "achieved_tflops": 0.48152829542554326
+    },
+    {
+      "label": "K=16",
+      "series": "compute-K (compiled)",
+      "ai": 8.0,
+      "achieved_tflops": 1.9428912896799626
+    },
+    {
+      "label": "K=64",
+      "series": "compute-K (compiled)",
+      "ai": 32.0,
+      "achieved_tflops": 2.7790443276800936
+    },
+    {
+      "label": "N=1024",
+      "series": "matmul-N",
+      "ai": 341.3333333333333,
+      "achieved_tflops": 21.01920678190343
+    },
+    {
+      "label": "N=2048",
+      "series": "matmul-N",
+      "ai": 682.6666666666666,
+      "achieved_tflops": 25.28364453790198
+    },
+    {
+      "label": "N=4096",
+      "series": "matmul-N",
+      "ai": 1365.3333333333333,
+      "achieved_tflops": 22.287436831573537
+    }
+  ]
+}
