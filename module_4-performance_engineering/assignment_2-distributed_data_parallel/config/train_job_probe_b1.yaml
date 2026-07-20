@@ -1,4 +1,4 @@
-name: nebius-ddp-training
+name: nebius-ddp-probe-b1
 
 workdir: .
 
@@ -13,10 +13,10 @@ num_nodes: 1
 envs:
   TRAIN_SCRIPT: "train.py"
   BLOCK_SIZE: "512"
-  PER_DEVICE_TRAIN_BATCH_SIZE: "16"
-  PER_DEVICE_EVAL_BATCH_SIZE: "16"
+  PER_DEVICE_TRAIN_BATCH_SIZE: "64"
+  PER_DEVICE_EVAL_BATCH_SIZE: "64"
   GRADIENT_ACCUMULATION_STEPS: "1"
-  MAX_STEPS: "500"
+  MAX_STEPS: "1"
   DATALOADER_NUM_WORKERS: "8"
   TOKENIZERS_PARALLELISM: "false"
   NCCL_DEBUG: INFO

@@ -8,7 +8,7 @@ resources:
   memory: "60+"
   image_id: docker:cr.eu-north1.nebius.cloud/e00fse5540r6261br4/nebius-trainer:gpt2-large-amd64-v1
 
-num_nodes: 1
+num_nodes: 4
 
 envs:
   TRAIN_SCRIPT: "train.py"

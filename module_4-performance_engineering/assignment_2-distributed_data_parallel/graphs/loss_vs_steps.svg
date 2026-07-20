@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520">
+<rect width="100%" height="100%" fill="white"/>
+<text x="450.0" y="32" text-anchor="middle" font-family="sans-serif" font-size="20">Loss vs. training steps</text>
+<line x1="70" y1="450" x2="830" y2="450" stroke="black"/>
+<line x1="70" y1="70" x2="70" y2="450" stroke="black"/>
+<text x="450.0" y="502" text-anchor="middle" font-family="sans-serif">Optimizer step</text>
+<text x="20" y="260.0" transform="rotate(-90 20 260.0)" text-anchor="middle" font-family="sans-serif">Training loss</text>
+<line x1="70.0" y1="450" x2="70.0" y2="455" stroke="black"/>
+<text x="70.0" y="472" text-anchor="middle" font-family="sans-serif" font-size="12">0</text>
+<line x1="65" y1="450.0" x2="70" y2="450.0" stroke="black"/>
+<text x="60" y="454.0" text-anchor="end" font-family="sans-serif" font-size="12">7.50</text>
+<line x1="222.0" y1="450" x2="222.0" y2="455" stroke="black"/>
+<text x="222.0" y="472" text-anchor="middle" font-family="sans-serif" font-size="12">100</text>
+<line x1="65" y1="374.0" x2="70" y2="374.0" stroke="black"/>
+<text x="60" y="378.0" text-anchor="end" font-family="sans-serif" font-size="12">8.21</text>
+<line x1="374.0" y1="450" x2="374.0" y2="455" stroke="black"/>
+<text x="374.0" y="472" text-anchor="middle" font-family="sans-serif" font-size="12">200</text>
+<line x1="65" y1="298.0" x2="70" y2="298.0" stroke="black"/>
+<text x="60" y="302.0" text-anchor="end" font-family="sans-serif" font-size="12">8.91</text>
+<line x1="526.0" y1="450" x2="526.0" y2="455" stroke="black"/>
+<text x="526.0" y="472" text-anchor="middle" font-family="sans-serif" font-size="12">300</text>
+<line x1="65" y1="222.0" x2="70" y2="222.0" stroke="black"/>
+<text x="60" y="226.0" text-anchor="end" font-family="sans-serif" font-size="12">9.61</text>
+<line x1="678.0" y1="450" x2="678.0" y2="455" stroke="black"/>
+<text x="678.0" y="472" text-anchor="middle" font-family="sans-serif" font-size="12">400</text>
+<line x1="65" y1="146.0" x2="70" y2="146.0" stroke="black"/>
+<text x="60" y="150.0" text-anchor="end" font-family="sans-serif" font-size="12">10.31</text>
+<line x1="830.0" y1="450" x2="830.0" y2="455" stroke="black"/>
+<text x="830.0" y="472" text-anchor="middle" font-family="sans-serif" font-size="12">500</text>
+<line x1="65" y1="70.0" x2="70" y2="70.0" stroke="black"/>
+<text x="60" y="74.0" text-anchor="end" font-family="sans-serif" font-size="12">11.01</text>
+<path d="M 85.2 70.0 L 100.4 122.0 L 115.6 201.6 L 130.8 251.8 L 146.0 282.0 L 161.2 297.2 L 176.4 306.8 L 191.6 315.8 L 206.8 324.9 L 222.0 323.2 L 237.2 332.7 L 252.4 338.7 L 267.6 343.6 L 282.8 351.8 L 298.0 362.6 L 313.2 360.6 L 328.4 377.8 L 343.6 377.6 L 358.8 381.0 L 374.0 383.1 L 389.2 386.8 L 404.4 386.9 L 419.6 391.8 L 434.8 400.9 L 450.0 399.4 L 465.2 407.3 L 480.4 406.6 L 495.6 415.2 L 510.8 417.8 L 526.0 418.1 L 541.2 418.1 L 556.4 424.2 L 571.6 422.6 L 586.8 420.8 L 602.0 422.9 L 617.2 426.4 L 632.4 428.1 L 647.6 423.9 L 662.8 425.3 L 678.0 432.0 L 693.2 432.3 L 708.4 428.9 L 723.6 435.1 L 738.8 428.1 L 754.0 428.4 L 769.2 435.8 L 784.4 430.8 L 799.6 431.8 L 814.8 431.9 L 830.0 430.5" fill="none" stroke="#2563eb" stroke-width="2"/>
+<line x1="670" y1="55" x2="695" y2="55" stroke="#2563eb" stroke-width="3"/>
+<text x="700" y="59" font-family="sans-serif" font-size="13">1 GPU</text>
+<path d="M 85.2 70.0 L 100.4 127.5 L 115.6 209.0 L 130.8 261.4 L 146.0 290.2 L 161.2 302.7 L 176.4 313.3 L 191.6 321.2 L 206.8 325.6 L 222.0 331.6 L 237.2 339.7 L 252.4 347.3 L 267.6 357.1 L 282.8 365.2 L 298.0 367.6 L 313.2 376.5 L 328.4 378.8 L 343.6 386.4 L 358.8 389.9 L 374.0 395.5 L 389.2 400.2 L 404.4 407.1 L 419.6 411.0 L 434.8 419.3 L 450.0 421.8 L 465.2 425.0 L 480.4 427.6 L 495.6 430.1 L 510.8 430.8 L 526.0 437.6 L 541.2 439.8 L 556.4 436.9 L 571.6 438.5 L 586.8 441.8 L 602.0 443.1 L 617.2 444.6 L 632.4 443.9 L 647.6 444.3 L 662.8 447.8 L 678.0 445.6 L 693.2 449.5 L 708.4 446.9 L 723.6 446.9 L 738.8 446.6 L 754.0 450.0 L 769.2 448.7 L 784.4 449.9 L 799.6 448.7 L 814.8 445.6 L 830.0 449.2" fill="none" stroke="#dc2626" stroke-width="2"/>
+<line x1="670" y1="77" x2="695" y2="77" stroke="#dc2626" stroke-width="3"/>
+<text x="700" y="81" font-family="sans-serif" font-size="13">4 GPUs</text>
+</svg>

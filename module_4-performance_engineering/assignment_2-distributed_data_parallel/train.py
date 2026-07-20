@@ -183,13 +183,13 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # 1. Define the GPT-2 (124M) architecture configuration (no weights downloaded)
+    # 1. Define the GPT-2 Large (762M) architecture configuration (no weights downloaded).
     config = GPT2Config(
         vocab_size=50257,  # Standard GPT-2 vocabulary size
-        n_positions=512,  # GPT-2 standard context window length
-        n_embd=768,  # Hidden dimension size (GPT-2 base/small)
-        n_layer=12,  # Number of transformer layers (GPT-2 base/small)
-        n_head=12,  # Number of attention heads (GPT-2 base/small)
+        n_positions=1024,  # GPT-2 Large context window length
+        n_embd=1280,  # Hidden dimension size
+        n_layer=36,  # Number of transformer layers
+        n_head=20,  # Attention heads (1280 / 20 = 64 dimensions per head)
         bos_token_id=50256,
         eos_token_id=50256,
     )
@@ -273,7 +273,7 @@ def main():
     # ── Training ───────────────────────────────────────────────────────
     args = TrainingArguments(
         output_dir="/tmp/output",
-        max_steps=500,
+        max_steps=int(os.environ.get("MAX_STEPS", 500)),
         per_device_train_batch_size=per_device_train_batch_size,
         per_device_eval_batch_size=per_device_eval_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,

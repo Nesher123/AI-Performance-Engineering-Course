@@ -182,17 +182,13 @@ n_embd: Hidden/embedding dimension
 n_layer: Number of transformer blocks (depth)
 n_head: Attention heads per block
 
-
 > **Required for this assignment:**  
 You must modify the model configuration in `train.py` to match the **GPT-2 Large** architecture (approximately 750M parameters), not the default GPT-2 base. Take the configuration from [the original GPT-2 paper (see Table 2)](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf): for GPT-2 Large, Table 2 gives `n_layer = 36`, `n_embd = 1280`, and `n_head = 20`. Use the standard GPT-2 context window `n_positions = 1024`. Note that in standard GPT models, the dimension per attention head is typically kept constant at 64 ($d_{head} = d_{model} / n_{heads} = 64$).  
-
 
 You **must update** the `n_embd`, `n_layer`, `n_positions`, and `n_head` values in your code to reflect the GPT-2 Large model.  
 This is necessary so that your analysis, throughput, and scaling measurements are based on the ~750M parameter GPT-2 architecture.
 
 Be aware that fitting this much larger model into GPU memory may require lowering your per-device batch size. Find that maximum in **step 2** of the experiment workflow below.
-
-
 
 ### Key knobs (from `train_job_ddp.yaml`)
 
@@ -245,7 +241,7 @@ instrumentation needed on your part.
    750M parameters.
 
 2. **Find the maximum per-device batch size (before the full runs).** With
-   `num_nodes: 1`, gradually raise `PER_DEVICE_TRAIN_BATCH_SIZE` with power-of-2 values until the job fails with an out-of-memory (OOM) error. Short probe runs are enough — you only need to confirm whether a given batch size fits. **What is the limit?** 
+   `num_nodes: 1`, gradually raise `PER_DEVICE_TRAIN_BATCH_SIZE` with power-of-2 values until the job fails with an out-of-memory (OOM) error. Short probe runs are enough — you only need to confirm whether a given batch size fits. **What is the limit?**
    Report the largest value that runs successfully. Use this batch size for all
    subsequent training runs.
 
